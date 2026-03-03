@@ -44,7 +44,9 @@ def patched_count_populated(self):
 Identifier.matches = patched_matches
 Identifier.count_populated = patched_count_populated
 import sys
+import os
 import time
+import asyncio
 from datetime import datetime, timedelta
 from database.database import kingdb
 from pyrogram.types import InlineKeyboardButton, BotCommand
@@ -65,6 +67,7 @@ class Bot(Client):
         self.LOGGER = LOGGER
         self.FOLDER_LIST = []
         self.EXTRALINK_LIST = []
+        self.restart_task = None
 
     async def update_folders(self):
         self.FOLDER_LIST = await kingdb.get_all_folders()
@@ -89,17 +92,32 @@ class Bot(Client):
         await self.set_bot_commands([
             BotCommand("start", "Start Bot"),
             BotCommand("help", "Get Help"),
+            BotCommand("files", "File Management"),
+            BotCommand("genlink", "Generate Link"),
+            BotCommand("batch", "Batch File Sharing"),
             BotCommand("addfolder", "Add Folder Link"),
             BotCommand("myfolders", "Manage Folders"),
             BotCommand("extralink", "Add Extra Link"),
             BotCommand("myextralink", "Manage Extra Links"),
             BotCommand("users", "User Settings"),
             BotCommand("forcesub", "Force Sub Settings"),
+            BotCommand("add_fsub", "Add Force Sub Channel"),
+            BotCommand("del_fsub", "Delete Force Sub Channel"),
+            BotCommand("fsub_chnl", "List Force Sub Channels"),
+            BotCommand("req_fsub", "Request Force Sub Mode"),
+            BotCommand("add_admins", "Add Admin"),
+            BotCommand("del_admins", "Remove Admin"),
+            BotCommand("admin_list", "List Admins"),
+            BotCommand("add_banuser", "Ban User"),
+            BotCommand("del_banuser", "Unban User"),
+            BotCommand("banuser_list", "List Banned Users"),
+            BotCommand("auto_del", "Auto Delete Settings"),
             BotCommand("broadcast", "Broadcast Message"),
             BotCommand("cancel", "Cancel Broadcast"),
             BotCommand("status", "Bot Status"),
             BotCommand("cmd", "Admin Commands"),
             BotCommand("restart", "Restart Bot"),
+            BotCommand("autorestart", "Auto Restart Settings"),
         ])
                 
         try:
@@ -120,7 +138,7 @@ class Bot(Client):
             sys.exit()
 
         self.set_parse_mode(ParseMode.HTML)
-        self.LOGGER(__name__).info(f"Aᴅᴠᴀɴᴄᴇ Fɪʟᴇ-Sʜᴀʀɪɴɢ ʙᴏᴛV3 Mᴀᴅᴇ Bʏ ➪ @Lord_Vasudev_Krishna [Tᴇʟᴇɢʀᴀᴍ Usᴇʀɴᴀᴍᴇ]")
+        self.LOGGER(__name__).info(f"Aᴅᴠᴀɴᴄᴇ Fɪʟᴇ-Sʜᴀʀɪɴɢ ʙᴏᴛV3 Mᴀᴅᴇ Bʏ ➪ @Shidoteshika1 [Tᴇʟᴇɢʀᴀᴍ Usᴇʀɴᴀᴍᴇ]")
         self.LOGGER(__name__).info(f"{self.name} Bot Running..!")
         self.LOGGER(__name__).info(f"OPERATION SUCCESSFULL ✅")
         #web-response
@@ -132,6 +150,33 @@ class Bot(Client):
         try: await self.send_message(OWNER_ID, text = f"<b><blockquote>🤖 Bᴏᴛ Rᴇsᴛᴀʀᴛᴇᴅ ♻️</blockquote></b>")
         except: pass
 
+        if await kingdb.get_auto_restart():
+            await self.start_auto_restart_task()
+
+    async def restart_process(self):
+        self.LOGGER(__name__).info("Restarting Bot Process...")
+        args = [sys.executable, "main.py"]
+        os.execl(sys.executable, *args)
+
+    async def auto_restart_job(self):
+        while True:
+            await asyncio.sleep(7200) # 2 hours
+            try:
+                await self.send_message(OWNER_ID, text = "<b><blockquote>🤖 Aᴜᴛᴏ Rᴇsᴛᴀʀᴛ Iɴɪᴛɪᴀᴛᴇᴅ ♻️</blockquote></b>")
+            except:
+                pass
+            await self.restart_process()
+
+    async def start_auto_restart_task(self):
+        if self.restart_task is None or self.restart_task.done():
+             self.restart_task = asyncio.create_task(self.auto_restart_job())
+             self.LOGGER(__name__).info("Auto-restart task started.")
+
+    async def stop_auto_restart_task(self):
+        if self.restart_task and not self.restart_task.done():
+            self.restart_task.cancel()
+            self.restart_task = None
+            self.LOGGER(__name__).info("Auto-restart task stopped.")
 
     async def update_chat_ids(self):
         chat_ids = await kingdb.get_all_channels()
